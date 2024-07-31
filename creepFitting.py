@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from scipy.optimize import curve_fit
 
 # Assuming your Excel file has three columns: 'Time_23', 'Creep Strain_23', 'Time_60', 'Creep Strain_60'
 # Replace 'your_file.xlsx' with the actual file name
@@ -14,66 +15,63 @@ file_path = '3G fitting data _2.xlsx'
 df = pd.read_excel(file_path,2,header=None)
 
 # Extract time and creep strain columns for both temperatures
-time_5MPa = df[0].dropna()*3600
-creep_strain_5MPa = 5/df[1].dropna()
-time_10MPa = df[2].dropna()*3600
-creep_strain_10MPa = 10/df[3].dropna()
-time_15MPa = df[4].dropna()*3600
-creep_strain_15MPa = 15/df[5].dropna()
-time_20MPa = df[6].dropna()*3600
-creep_strain_20MPa = 20/df[7].dropna()
+listOdd=list(range(1,df.shape[1],2))
+listEven=list(range(0,df.shape[1],2))
+
+sigmaList=[5,10,15,20]
+tempList=[40]
+
+plt.figure(figsize=(8, 6))
+for i in range(0,int((len(sigmaList)))):
+    print(i)
+    df[listOdd[i]]=df[listOdd[i]].map(lambda x: sigmaList[i]/x)
+    df[listEven[i]]=df[listEven[i]].map(lambda x: x*3600)
+    plt.plot(df[listEven[i]].dropna(),df[listOdd[i]].dropna(), label=f'{tempList}°C-{sigmaList[i]}MPa Data')
+
+# time_5MPa = df[0].dropna()*3600
+# creep_strain_5MPa = 5/df[1].dropna()
+# time_10MPa = df[2].dropna()*3600
+# creep_strain_10MPa = 10/df[3].dropna()
+# time_15MPa = df[4].dropna()*3600
+# creep_strain_15MPa = 15/df[5].dropna()
+# time_20MPa = df[6].dropna()*3600
+# creep_strain_20MPa = 20/df[7].dropna()
 
 
 # Plot the original data and interpolated data
-plt.figure(figsize=(8, 6))
+
 
 # # Plot original data points
-plt.plot(time_5MPa, creep_strain_5MPa, label='23°C-5MPa Data', color='blue')
-plt.plot(time_10MPa, creep_strain_10MPa, label='23°C-10MPa Data', color='green')
-plt.plot(time_15MPa, creep_strain_15MPa, label='23°C-15MPa Data', color='red')
-plt.plot(time_20MPa, creep_strain_20MPa, label='23°C-20MPa Data', color='orange')
 
+# plt.plot(time_5MPa, creep_strain_5MPa, label='23°C-5MPa Data', color='blue')
+# plt.plot(time_10MPa, creep_strain_10MPa, label='23°C-10MPa Data', color='green')
+# plt.plot(time_15MPa, creep_strain_15MPa, label='23°C-15MPa Data', color='red')
+# plt.plot(time_20MPa, creep_strain_20MPa, label='23°C-20MPa Data', color='orange')
 
-# #plt.xscale("log")
-# # Set labels and title
-# plt.xlabel('Time')
-# plt.ylabel('Creep Strain')
-# plt.title('Experimental creep strain v.s. time')
-# plt.legend()
-# plt.grid(True)
-
-# # Show the plot
-# plt.savefig('C:/Work\Projects/NG shut-off valve/Material/Creep exp data/Py/experimental_data', dpi=300)
-# plt.show()
 
 
 
 
 ############## Calibration
 
-import pandas as pd
-import numpy as np
-from scipy.optimize import curve_fit
-import matplotlib.pyplot as plt
+
 
 # Load experimental data from Excel
 #file_path = 'experimental_data.xlsx'  # Replace with your actual file path
 #df = pd.read_excel(file_path)
 
-stresses=[5,10,15,20]
 
 # Combine the data
-combined_time = np.concatenate([globals()[f'time_{stress}MPa'] for stress in stresses])
-combined_epsilon = np.concatenate([globals()[f'creep_strain_{stress}MPa'] for stress in stresses])
+# combined_time = np.concatenate([globals()[f'time_{stress}MPa'] for stress in sigmaList])
+combined_time = np.concatenate([df[listEven[i]].dropna() for i in range(0,4)])
+# combined_epsilon = np.concatenate([globals()[f'creep_strain_{stress}MPa'] for stress in sigmaList])
+combined_epsilon = np.concatenate([df[listOdd[i]].dropna() for i in range(0,4)])
 
 # Combine the corresponding stress values
-sigma_5MPa = 5.0
-sigma_10MPa = 10.0
-sigma_15MPa = 15.0
-sigma_20MPa = 20.0
 
-combined_sigma = np.concatenate([np.full_like(time_5MPa, sigma_5MPa), np.full_like(time_10MPa, sigma_10MPa),np.full_like(time_15MPa, sigma_15MPa), np.full_like(time_20MPa, sigma_20MPa)])
 
+# combined_sigma = np.concatenate([np.full_like(time_5MPa, sigma_5MPa), np.full_like(time_10MPa, sigma_10MPa),np.full_like(time_15MPa, sigma_15MPa), np.full_like(time_20MPa, sigma_20MPa)])
+combinedSigma = np.concatenate([np.full_like(df[listOdd[i]].dropna(),sigmaList[i]) for i in range(0,4)])
 
 combined_temp = 40+273
 # Temperature
@@ -81,7 +79,7 @@ T = 318  # Replace with your actual temperature
 #C4=13000
 # Creep strain model function
 def creep_model(t, C1, C2, C3, C4):
-    return ((1 / (combined_sigma**C2 * np.exp(-C4 / combined_temp) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
+    return ((1 / (combinedSigma**C2 * np.exp(-C4 / combined_temp) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
 
 # Initial guess for parameters C1, C2, C3, C4
 initial_guess = ([0.0000000001, 0, -50,0], [1, 50, 0,np.inf])
@@ -129,26 +127,33 @@ print("Optimized parameters for Sigma = 5 MPa:", params)
 
 
 
+def creep_model_test(t,stress,C1,C2,C3,C4):
+    return ((1 / (stress**C2 * np.exp(-C4 / (273+40)) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
 
-def creep_model_5(t, C1, C2, C3, C4):
-    return ((1 / (5**C2 * np.exp(-C4 / (273+40)) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
+i=0
+for sigma in sigmaList:
+    timeSpace = np.logspace(np.log10(df[listEven[i]][0]), np.log10(df[listEven[i]][len(df[listEven[i]].dropna())-1]), num=100)
+    plt.plot(timeSpace,creep_model_test(timeSpace,sigma,*params),label=f'Fitted Model - {tempList}°C - {sigma} MPa',linestyle='--')
+    i=i+1
+# def creep_model_5(t, C1, C2, C3, C4):
+#     return ((1 / (5**C2 * np.exp(-C4 / (273+40)) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
 
-plt.plot(time_5MPa, creep_model_5(time_5MPa, *params), label='Fitted Model - 23C - 5 MPa', linestyle='--', color='blue')
+# plt.plot(time_5MPa, creep_model_5(time_5MPa, *params), label='Fitted Model - 23C - 5 MPa', linestyle='--', color='blue')
 
-def creep_model_10(t, C1, C2, C3, C4):
-    return ((1 / (10**C2 * np.exp(-C4 / (273+40)) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
+# def creep_model_10(t, C1, C2, C3, C4):
+#     return ((1 / (10**C2 * np.exp(-C4 / (273+40)) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
 
-plt.plot(time_10MPa, creep_model_10(time_10MPa, *params), label='Fitted Model - 23C -10 MPa', linestyle='--', color='green')
+# plt.plot(time_10MPa, creep_model_10(time_10MPa, *params), label='Fitted Model - 23C -10 MPa', linestyle='--', color='green')
 
-def creep_model_15(t, C1, C2, C3, C4):
-    return ((1 / (15**C2 * np.exp(-C4 / (273+40)) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
+# def creep_model_15(t, C1, C2, C3, C4):
+#     return ((1 / (15**C2 * np.exp(-C4 / (273+40)) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
 
-plt.plot(time_15MPa, creep_model_15(time_15MPa, *params), label='Fitted Model - 23C - 15 MPa', linestyle='--', color='red')
+# plt.plot(time_15MPa, creep_model_15(time_15MPa, *params), label='Fitted Model - 23C - 15 MPa', linestyle='--', color='red')
 
-def creep_model_20(t, C1, C2, C3, C4):
-    return ((1 / (20**C2 * np.exp(-C4 / (273+40)) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
+# def creep_model_20(t, C1, C2, C3, C4):
+#     return ((1 / (20**C2 * np.exp(-C4 / (273+40)) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
 
-plt.plot(time_20MPa, creep_model_20(time_20MPa, *params), label='Fitted Model - 23C - 20 MPa', linestyle='--', color='orange')
+# plt.plot(time_20MPa, creep_model_20(time_20MPa, *params), label='Fitted Model - 23C - 20 MPa', linestyle='--', color='orange')
 
 # Set labels and title
 plt.xlabel('Time')
@@ -159,7 +164,7 @@ plt.legend()
 plt.grid(True)
 
 # Show the plot
-plt.savefig('C:/Work\Projects/In progress/3G Copression fitting/docs/Creep calibration/fitted_data_23C', dpi=300)
+plt.savefig('fitted_data_40C', dpi=300)
 
 plt.show()
 
