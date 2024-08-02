@@ -7,7 +7,7 @@ from lmfit import Model
 
 
 # Replace 'your_file.xlsx' with the actual file name
-file_path = '3G fitting data _2.xlsx'
+file_path = '3G fitting data _2 temp.xlsx'
 
 
 # Load the data from Excel
@@ -17,17 +17,21 @@ df = pd.read_excel(file_path,2,header=None)
 listOdd=list(range(1,df.shape[1],2))
 listEven=list(range(0,df.shape[1],2))
 
-sigmaList=[5,10,15,20]
-tempList=40
-colors=['blue','green','red','orange']
+sigmaList=[5,10,15,20,5,10]
+tempList=[23,40]
+numberList=[4,2]
+colors=['blue','green','red','orange','yellow','purple','black','cyan','grey','brown']
 plt.figure(figsize=(8, 6))
-for i in range(0,int((len(sigmaList)))):
-    #converting the E-modulus(MPa) v.s. time (h) to strain v.s. time (s)
-    df[listOdd[i]]=df[listOdd[i]].map(lambda x: sigmaList[i]/x)
-    df[listEven[i]]=df[listEven[i]].map(lambda x: x*3600)
-    #Plotting the experimental data
-    plt.plot(df[listEven[i]].dropna(),df[listOdd[i]].dropna(), label=f'{tempList}°C-{sigmaList[i]}MPa Data',color=colors[i])
-
+i=0
+for j in range(0,int(len(tempList))):
+    for k in range(0,numberList[j]):
+        
+        #converting the E-modulus(MPa) v.s. time (h) to strain v.s. time (s)
+        df[listOdd[i]]=df[listOdd[i]].map(lambda x: sigmaList[i]/x)
+        df[listEven[i]]=df[listEven[i]].map(lambda x: x*3600)
+        #Plotting the experimental data
+        plt.plot(df[listEven[i]].dropna(),df[listOdd[i]].dropna(), label=f'{tempList[j]}°C-{sigmaList[i]}MPa Data',color=colors[i])
+        i+=1
 
 
 
@@ -35,14 +39,15 @@ for i in range(0,int((len(sigmaList)))):
 ############## Calibration
 
 # Combine the data
-combined_time = np.concatenate([df[listEven[i]].dropna() for i in range(0,4)])
-combined_epsilon = np.concatenate([df[listOdd[i]].dropna() for i in range(0,4)])
+combined_time = np.concatenate([df[listEven[i]].dropna() for i in range(0,len(listEven))])
+combined_epsilon = np.concatenate([df[listOdd[i]].dropna() for i in range(0,len(listEven))])
 
 # Combine the corresponding stress values
-combinedSigma = np.concatenate([np.full_like(df[listOdd[i]].dropna(),sigmaList[i]) for i in range(0,4)])
+combinedSigma = np.concatenate([np.full_like(df[listOdd[i]].dropna(),sigmaList[i]) for i in range(0,int(len(sigmaList)))])
 
 # Temperature
-combined_temp = 40+273
+combinedTemp_temp=[tempList[i] for i in range(len(numberList)) for j in range(numberList[i]) ]
+combinedTemp = np.concatenate([np.full_like(df[listOdd[i]].dropna(),combinedTemp_temp[i]) for i in range(0,int(len(sigmaList)))])+273
 
 # T = 318  # Replace with your actual temperature
 #C4=13000
@@ -50,7 +55,7 @@ combined_temp = 40+273
 # def creep_model(t, C1, C2, C3, C4):
 #     return ((1 / (combinedSigma**C2 * np.exp(-C4 / combined_temp) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
 def creep_model(t,  C1, C2, C3, C4):
-    return ((1 / (combinedSigma**C2 * np.exp(-C4 / combined_temp) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
+    return ((1 / (combinedSigma**C2 * np.exp(-C4 / combinedTemp) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
 
 
 
@@ -86,14 +91,16 @@ for param_name, (value, stderr) in params_dict.items():
 
 # Plot the experimental data and the fitted model
 
-def creep_model_test(t,stress,C1,C2,C3,C4):
-    return ((1 / (stress**C2 * np.exp(-C4 / (273+40)) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
+def creep_model_test(t,stress,temp,C1,C2,C3,C4):
+    return ((1 / (stress**C2 * np.exp(-C4 / (273+temp)) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
 
 i=0
+
 for sigma in sigmaList:
     timeSpace = np.logspace(np.log10(df[listEven[i]][0]), np.log10(df[listEven[i]][len(df[listEven[i]].dropna())-1]), num=100)
-    plt.plot(timeSpace,creep_model_test(timeSpace,sigma,*params),label=f'Fitted Model - {tempList}°C - {sigma} MPa',linestyle='--',color=colors[i])
+    plt.plot(timeSpace,creep_model_test(timeSpace,sigma,combinedTemp_temp[i],*params),label=f'Fitted Model - {combinedTemp_temp[i]}°C - {sigma} MPa',linestyle='--',color=colors[i])
     i=i+1
+        
 
 #Figure modification
 plt.xlabel('Time')
