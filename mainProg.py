@@ -34,22 +34,21 @@ def process_data():
     file_path = entry_file.get()
     num_set1 = entry_num1.get()
     num_set2 = entry_num2.get()
-    num_set3 = entry_num3.get()
     option = var_option.get()
     
     # Read Excel file
     df = pd.read_excel(file_path,header=None)
     
     # Process data (user-defined function)
-    results, imgPlt = creepFit(df, num_set1, num_set2, num_set3, option)
+    results, imgPlt = creepFit(df, num_set1, num_set2, option)
     img = fig_to_array(imgPlt)
 
     
     # Display results and image
-    label_result1.config(text=f"Result 1: {results[0]}")
-    label_result2.config(text=f"Result 2: {results[1]}")
-    label_result3.config(text=f"Result 3: {results[2]}")
-    label_result4.config(text=f"Result 4: {results[3]}")
+    label_result1.config(text=f"C1: {results[0]}")
+    label_result2.config(text=f"C2: {results[1]}")
+    label_result3.config(text=f"C3: {results[2]}")
+    label_result4.config(text=f"C4: {results[3]}")
     
     # Display image
     root.fig = plt.figure()
@@ -78,26 +77,26 @@ label_file = tk.Label(root, text="Select Excel File:")
 entry_file = tk.Entry(root, width=50)
 button_file = tk.Button(root, text="Browse", command=select_file)
 
-label_num1 = tk.Label(root, text="Input Set 1:")
+label_num1 = tk.Label(root, text="Input the applied constant stress for each dataset seperated by ',' :",justify='left')
 entry_num1 = tk.Entry(root)
+entry_num1.insert(0,"5,10,15,20,5,10")
 
-label_num2 = tk.Label(root, text="Input Set 2:")
+# The temperature input can be changed to be the same format as stress
+label_num2 = tk.Label(root, text="Input the temperatures considered for each dataset seperated by ',' :",justify='left')
 entry_num2 = tk.Entry(root)
-
-label_num3 = tk.Label(root, text="Input Set 3:")
-entry_num3 = tk.Entry(root)
+entry_num2.insert( 0,"23,23,23,23,40,40")
 
 var_option = tk.StringVar(value="default")
-label_option = tk.Label(root, text="Select Option:")
-radio_default = tk.Radiobutton(root, text="Default", variable=var_option, value="default")
+label_option = tk.Label(root, text="Choose the calibration model:")
+radio_default = tk.Radiobutton(root, text="Default", variable=var_option, value="Curve_fit (default)")
 radio_lmfit = tk.Radiobutton(root, text="LMFit", variable=var_option, value="LMFIT")
 
 button_process = tk.Button(root, text="Process", command=process_data)
 
-label_result1 = tk.Label(root, text="Result 1: ")
-label_result2 = tk.Label(root, text="Result 2: ")
-label_result3 = tk.Label(root, text="Result 3: ")
-label_result4 = tk.Label(root, text="Result 4: ")
+label_result1 = tk.Label(root, text="C1: ")
+label_result2 = tk.Label(root, text="C2: ")
+label_result3 = tk.Label(root, text="C3: ")
+label_result4 = tk.Label(root, text="C4: ")
 
 frame_image = tk.Frame(root)
 button_save = tk.Button(root, text="Save Image", command=save_image)
@@ -113,8 +112,6 @@ entry_num1.grid(row=1, column=1, padx=10, pady=5)
 label_num2.grid(row=2, column=0, padx=10, pady=5)
 entry_num2.grid(row=2, column=1, padx=10, pady=5)
 
-label_num3.grid(row=3, column=0, padx=10, pady=5)
-entry_num3.grid(row=3, column=1, padx=10, pady=5)
 
 label_option.grid(row=4, column=0, padx=10, pady=5)
 radio_default.grid(row=4, column=1, padx=10, pady=5)

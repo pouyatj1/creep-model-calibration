@@ -9,28 +9,28 @@ from lmfit import Model
 
 
 
-def creepFit(df,sigmaList,tempList,numberList,option):
+def creepFit(df,sigmaList,tempList,option):
     
     if type(sigmaList) is str:
         sigmaList=[int(x) for x in sigmaList.split(',')]
-        tempList=[int(x) for x in tempList.split(',')]
-        numberList=[int(x) for x in numberList.split(',')]       
+        tempList=[int(x) for x in tempList.split(',')]      
 
     listOdd=list(range(1,df.shape[1],2))
     listEven=list(range(0,df.shape[1],2))
     colors=['blue','green','red','orange','yellow','purple','black','cyan','grey','brown']
     # plt.figure(figsize=(8, 6))
-    fig,ax = plt.subplots()
-    i=0
-    for j in range(0,int(len(tempList))):
-        for k in range(0,numberList[j]):
+    fig,ax = plt.subplots(figsize=(7,5))
+
+    # i=0
+    for i in range(0,int(len(sigmaList))):
+        # for k in range(0,numberList[j]):
             
-            #converting the E-modulus(MPa) v.s. time (h) to strain v.s. time (s)
-            df[listOdd[i]]=df[listOdd[i]].map(lambda x: sigmaList[i]/x)
-            df[listEven[i]]=df[listEven[i]].map(lambda x: x*3600)
-            #Plotting the experimental data
-            ax.plot(df[listEven[i]].dropna(),df[listOdd[i]].dropna(), label=f'{tempList[j]}°C-{sigmaList[i]}MPa Data',color=colors[i])
-            i+=1
+        #converting the E-modulus(MPa) v.s. time (h) to strain v.s. time (s)
+        df[listOdd[i]]=df[listOdd[i]].map(lambda x: sigmaList[i]/x)
+        df[listEven[i]]=df[listEven[i]].map(lambda x: x*3600)
+        #Plotting the experimental data
+        ax.plot(df[listEven[i]].dropna(),df[listOdd[i]].dropna(), label=f'{tempList[i]}°C-{sigmaList[i]}MPa Data',color=colors[i])
+        # i+=1
 
 
 
@@ -43,10 +43,10 @@ def creepFit(df,sigmaList,tempList,numberList,option):
 
     # Combine the corresponding stress values
     combinedSigma = np.concatenate([np.full_like(df[listOdd[i]].dropna(),sigmaList[i]) for i in range(0,int(len(sigmaList)))])
-
+    combinedTemp = np.concatenate([np.full_like(df[listOdd[i]].dropna(),tempList[i]) for i in range(0,int(len(tempList)))])+273
     # Temperature
-    combinedTemp_temp=[tempList[i] for i in range(len(numberList)) for j in range(numberList[i]) ]
-    combinedTemp = np.concatenate([np.full_like(df[listOdd[i]].dropna(),combinedTemp_temp[i]) for i in range(0,int(len(sigmaList)))])+273
+    # combinedTemp_temp=[tempList[i] for i in range(len(numberList)) for j in range(numberList[i]) ]
+    # combinedTemp = np.concatenate([np.full_like(df[listOdd[i]].dropna(),combinedTemp_temp[i]) for i in range(0,int(len(sigmaList)))])+273
 
 
     # Creep strain model function
@@ -89,20 +89,34 @@ def creepFit(df,sigmaList,tempList,numberList,option):
 
     # Plot the experimental data and the fitted model
     def creep_model_test(t,stress,temp,C1,C2,C3,C4):
-        return ((1 / (stress**C2 * np.exp(-C4 / (273+temp)) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
+        return ((1 / (stress**C2 * np.exp(-C4 / (temp)) * C1 * t * (1 - C3)))**(1 / (C3 - 1)))
 
     i=0
     for sigma in sigmaList:
         timeSpace = np.logspace(np.log10(df[listEven[i]][0]), np.log10(df[listEven[i]][len(df[listEven[i]].dropna())-1]), num=100)
-        ax.plot(timeSpace,creep_model_test(timeSpace,sigma,combinedTemp_temp[i],*params),label=f'Fitted Model - {combinedTemp_temp[i]}°C - {sigma} MPa',linestyle='--',color=colors[i])
+        ax.plot(timeSpace,creep_model_test(timeSpace,sigma,tempList[i]+273,*params),label=f'Fitted Model - {tempList[i]:.0f}°C - {sigma} MPa',linestyle='--',color=colors[i])
         i=i+1
             
+
 
     #Figure modification
     ax.set_xlabel('Time')
     # plt.xscale('log')
     ax.set_ylabel('Creep Strain')
-    ax.set_title(f'Creep Strain Model Calibration for parameter: \n [C1 C2 C3 C4] = {params}')
+
+
+    def format_value(value):
+        if abs(value) < 0.001 or abs(value) > 10000:
+          return f"{value:.2e}"  # Scientific notation with 2 decimal places
+        else:
+          return f"{value:.2f}"  # Fixed-point notation with 2 decimal places
+    formattedParams = [format_value(p) for p in params]
+    formatted_params_str = ', '.join(formattedParams)
+
+
+
+
+    ax.set_title(f'Creep Strain Model Calibration for parameter: \n [C1 C2 C3 C4] = [{formatted_params_str}]')
     ax.legend()
     ax.grid(True)
     
@@ -119,11 +133,11 @@ def main():
 
     # Extract time and creep strain columns for both temperatures
     sigmaList=[5,10,15,20,5,10]
-    tempList=[23,40]
-    numberList=[4,2]
+    tempList=[23,23,23,23,40,40]
+
     option=None
 
-    parameters, plot = creepFit(df,sigmaList,tempList,numberList,option)
+    parameters, plot = creepFit(df,sigmaList,tempList,option)
 
     # Show the plot
     plot.savefig('fitted_data_40C lmfit', dpi=300)
